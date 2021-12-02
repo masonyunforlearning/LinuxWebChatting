@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #define BUF_SIZE 1024
 void error_handling(char* message);
+int chatting(int sock_id);
+void seecommand();
 
 int main(int argc, char* argv[]) {
     int sock;
@@ -42,11 +44,17 @@ int main(int argc, char* argv[]) {
 
         if (pid != 0)
         {
-            chatting(pid, sock_id);
+            //메세지 서버에 보내기
+            printf("if you want manual, type  /help or /?\n");
+            if (chatting(sock) == 1) {
+                kill(pid, SIGINT);
+                break;
+            }
             
         }
 
         if (pid == 0) {
+            //메세지 서버에서 받기
             str_len = read(sock, message, BUF_SIZE - 1);
             message[str_len] = 0;
             printf("%s", message);
@@ -57,25 +65,48 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-void chatting(int pid, int sock_id)
+int chatting(int sock_id)
 {
     char message[BUF_SIZE];
+    char mr[BUF_SIZE] = "makeroom";
+    char clearbuf[] = "";
     while (1)
     {
          fgets(message, BUF_SIZE, stdin);
-
-         if (!strcmp(message[0], "/") || !strcmp(message, "q\n")) {
-            kill(pid, SIGINT);
-            break;
+         
+         if (message[0] == '/' )
+         {
+                
+             if (!strcmp(message + 1, "help\n") || !strcmp(message + 1, "?\n"))
+             {
+                 seecommand();
+             }
+             else if (!strcmp(message + 1, "q\n") || !strcmp(message + 1, "Q\n"))
+             {
+                 return 1;
+             }
+             else if (!strcmp(message + 1, "makeroom\n"))
+             {
+                 printf("i want room\n");
+                 write(sock_id, message, strlen(message));
+             }
+             else
+                 printf("if you want manual, type  /help or /?\n");
          }
-         write(sock_id, message, strlen(message));
+         else
+            write(sock_id, message, strlen(message));
     }
    
-
+    return 0;
 }
 
 void error_handling(char* message) {
     fputs(message, stderr);
     fputc('\n', stderr);
     exit(1);
+}
+
+void seecommand() {
+
+    printf("/help /? : see command\n/q  /Q : quit client program\n/makeroom : make a room\n");
 }
