@@ -24,7 +24,7 @@ char INFO[9] = "_##_INFO";
     char RIST[11] = "_##_RIST\n";
     char NAME[9] = "_##_NAME";
 /*********************************/
-int intheroom = 1;
+int intheroom = 0;
 char myname[20];
 void error_handling(char* message);
 int chatting(int sock_id);
@@ -35,7 +35,8 @@ int main(int argc, char* argv[]) {
     struct sockaddr_in serv_addr;
     char message[BUF_SIZE];
     char* token;
-    char buf[BUF_SIZE] = "_##_INFO_##_NAME_##_";
+    // char buf[BUF_SIZE] = "_##_INFO_##_NAME_##_";
+    char buf[BUF_SIZE];
     int str_len;
     if (argc != 3) {
         printf("Usage : %s <IP> <port>\n", argv[0]);
@@ -63,7 +64,6 @@ int main(int argc, char* argv[]) {
             printf("%s\n", message);
             if (get != 0) break;
         }
-
     }
 
     pid_t pid = fork();
@@ -163,6 +163,7 @@ int chatting(int sock_id)
                      {
                          strcpy(buf, ROOM);
                          strcat(buf, ROIN);
+                         printf("message : %s", buf);
                          write(sock_id, buf, strlen(buf));
                      }
                      else
@@ -171,12 +172,14 @@ int chatting(int sock_id)
                  }
                  else if (!strcmp(token, "/mkroom\n"))
                  {
+                     token = strtok(NULL, " ");
                      if (intheroom)
                          printf("you can use this command only in the lobby\n");
                      else
                      {
                          strcpy(buf, ROOM);
                          strcat(buf, MAKE);
+                         strcat(buf,token);
                          write(sock_id, buf, strlen(buf));
                      }
                      
