@@ -6,26 +6,25 @@
 #include <sys/socket.h>
 #include <signal.h>
 #include <sys/types.h>
-#define BUF_SIZE 1024
+#define BUF_SIZE 10240
 /**********프로토콜 모음************/
 char protocol[7] = "_##_";
 char buf[BUF_SIZE] = "";
 char ROOM[9] = "_##_ROOM";
-    char MAKE[11] = "_##_MAKE\n";
-    char ENTER[9] = "_##_ENTE";
-    char EXIT[11] = "_##_EXIT\n";
-    char ROIN[11] = "_##_ROIN\n";
-    char LIST[11] = "_##_LIST\n";
-
+    char MAKE[13] = "_##_MAKE_##_";
+    char ENTER[13] = "_##_ENTE_##_";
+    char EXIT[14] = "_##_EXIT_##_\n";
+    char ROIN[14] = "_##_ROIN_##_\n";
+    
 char SEND[21] = "_##_CHAT_##_SEND_##_";
 char DMSG[21] = "_##_CHAT_##_DMSG_##_";
 char INFO[9] = "_##_INFO";
-    char MIST[11] = "_##_MIST\n";
-    char RIST[11] = "_##_RIST\n";
-    char NAME[9] = "_##_NAME";
+    char MIST[14] = "_##_MIST_##_\n";
+    char RIST[14] = "_##_RIST_##_\n";
+    char NAME[13] = "_##_NAME_##";
 /*********************************/
-int intheroom = 0;
-char myname[20];
+int intheroom = 0; //현재 내가 방에 있는지 없는지 확인
+char myname[BUF_SIZE];
 void error_handling(char* message);
 int chatting(int sock_id);
 void seecommand();
@@ -52,14 +51,14 @@ int main(int argc, char* argv[]) {
 
     if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
         error_handling("connect() error!");
-
-    else 
+    else
     {
-	printf("what is your name : ");
-    fgets(myname, BUF_SIZE, stdin);
-    strcat(buf, myname);
-    write(sock, buf, strlen(buf));
-	while (1) {
+        printf("what is your name : ");
+        fgets(myname, BUF_SIZE, stdin);
+        token = strtok(myname, "\n");
+        sprintf(buf, "%s%s%s%s\n", INFO, NAME, myname, protocol);
+        write(sock, buf, strlen(buf));
+        while (1) {
             int get = read(sock, message, BUF_SIZE);
             printf("%s\n", message);
             if (get != 0) break;
@@ -132,7 +131,7 @@ int chatting(int sock_id)
                      }
                      else
 		             {
-                         token = strtok(NULL, "\0");
+                         token = strtok(NULL, "\n");
                          if (token == NULL || token[0] == '\n')
                          {
                              printf("Does not fit the format of /dm\n");
@@ -141,6 +140,7 @@ int chatting(int sock_id)
                          {
                              strcat(buf, protocol);
                              strcat(buf, token);//메세지
+                             strcat(buf, "_##_\n");
                              write(sock_id, buf, strlen(buf));
                          }
                      }
@@ -149,8 +149,7 @@ int chatting(int sock_id)
                  {
                      if (intheroom)
                      {
-                         strcpy(buf, ROOM);
-                         strcat(buf, EXIT);
+                         sprintf(buf, "%s%s", ROOM, EXIT);
                          write(sock_id, buf, strlen(buf));
                      }
                      else
@@ -161,28 +160,29 @@ int chatting(int sock_id)
                  {
                      if (intheroom)
                      {
-                         strcpy(buf, ROOM);
-                         strcat(buf, ROIN);
-                         printf("message : %s", buf);
+                         sprintf(buf, "%s%s", ROOM, ROIN);
                          write(sock_id, buf, strlen(buf));
                      }
                      else
                          printf("you can use this command only in the room\n");
                      
                  }
-                 else if (!strcmp(token, "/mkroom\n"))
+                 else if (!strcmp(token, "/mkroom"))
                  {
-                     token = strtok(NULL, " ");
+                     token = strtok(NULL, "\n");
                      if (intheroom)
+                     {
                          printf("you can use this command only in the lobby\n");
+                     }                         
+                     else if(token == NULL || token[0] == '\n')
+                     {
+                         printf("Does not fit the format of /mkroom\n");
+                     }
                      else
                      {
-                         strcpy(buf, ROOM);
-                         strcat(buf, MAKE);
-                         strcat(buf,token);
+                         sprintf(buf, "%s%s%s%s\n", ROOM, MAKE,token,protocol);
                          write(sock_id, buf, strlen(buf));
                      }
-                     
                  }
                  else if (!strcmp(token, "/enter"))
                  {
@@ -192,18 +192,14 @@ int chatting(int sock_id)
 		             }
 		             else
                      {
-
-                         strcpy(buf, ROOM);
-                         strcat(buf, ENTER);
-                         token = strtok(NULL, " ");
-                         strcat(buf, protocol);
-                         if (token[0] == '\n')
+                         token = strtok(NULL, "\n");
+                         if (token == NULL || token[0] == '\n')
                          {
                              printf("Does not fit the format of /enter\n");
                          }
                          else
                          {
-                             strcat(buf, token);
+                             sprintf(buf, "%s%s%s%s\n", ROOM, ENTER,token,protocol);
                              write(sock_id, buf, strlen(buf));
                          }
 
@@ -212,14 +208,12 @@ int chatting(int sock_id)
                  }
                  else if (!strcmp(token, "/mlist\n"))
                  {
-                         strcpy(buf, INFO);
-                         strcat(buf, MIST);
-                         write(sock_id, buf, strlen(buf));
+                     sprintf(buf, "%s%s", INFO, MIST);
+                     write(sock_id, buf, strlen(buf));
                  }
                  else if (!strcmp(token, "/rlist\n"))
                  {
-                     strcpy(buf, INFO);
-                     strcat(buf, RIST);
+                     sprintf(buf, "%s%s", INFO, RIST);
                      write(sock_id, buf, strlen(buf));
                  }
                  else //그외 잘못된 명령문
@@ -233,14 +227,14 @@ int chatting(int sock_id)
              {
                  if (message[0] != '\n')
                  {
-                     strcpy(buf, SEND);
-                     strcat(buf, message);
+                     token = strtok(message, "\n");
+                     sprintf(buf, "%s%s%s\n", SEND, token, protocol);
                      write(sock_id,buf,strlen(buf));
                  }
              }
              else //아닐경우(로비에 있을경우)
              {
-                 printf("lobby\n");
+                 printf("You can only chat in the room.\n");
              }
              
          }
@@ -258,5 +252,15 @@ void error_handling(char* message) {
 
 void seecommand() {
 
-    printf("/help /? : see command\n/q  /Q : quit client program\n/makeroom : make a room\n");
+    printf("/help /? : Shows command\n");
+    printf("/quit : Close chatting program\n");
+    printf("/mlist : Shows people on the server\n");
+    printf("/rlist : Shows a list of rooms.\n");
+    printf("/myname  : Shows your name\n");
+    printf("/mkroom <ROOM_NAME> : Make a room named ROOM_NAME\n");
+    printf("/enter <ROOM_NUMBER> : Enter the room numbered ROOM_NUMBER\n");
+    printf("/exit : Leave the room\n");
+    printf("/info : Shows the information of the current room.\n");
+    printf("/dm <Target> <message> : Send a message to the Target.\n");
+    
 }
