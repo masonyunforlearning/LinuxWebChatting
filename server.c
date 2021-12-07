@@ -26,6 +26,7 @@ typedef struct type_socketInfo {
 
 void init_room(room* server_rooms, socketinfo * infos, char * room_name, int id);
 void set_nickname(socketinfo * infos, char * nickname, int id);
+void room_exit(room * servers, socketinfo * infos, int socketid);
 void error_handling(char * buf);
 int main(int argc, char * argv[]){
     room Server_room[10];
@@ -38,6 +39,10 @@ int main(int argc, char * argv[]){
             Server_room[i].current_member[k] = 0;
     }
     socketinfo Room_member_info[100];
+    for(int i = 0; i < 100; i++)
+    {
+        Room_member_info[i].curr_roomNumber = Room_member_info[i].socket_number = -1;
+    }
     int serv_sock, clnt_sock;
     struct sockaddr_in serv_adr, clnt_adr;
     struct timeval timeout;
@@ -114,10 +119,14 @@ int main(int argc, char * argv[]){
                         for(int k = 4; k < 4+count_cli; k++)
                         {
                             if(k != i){
-                               sprintf(buf,"client %d has left this chatting room\n",i);
+                               sprintf(buf,"User %s has left this chatting room\n",Room_member_info[i].nickname);
                                 write(k, buf,sizeof(buf));
                             }
                         }
+                        room_exit(Server_room,Room_member_info,i);
+                        Room_member_info[i].socket_number = -1;
+                        Room_member_info[i].curr_roomNumber = -1;
+                        
                         FD_CLR(i, &reads);
                         close(i);
                         printf("closed client: %d \n", i);
@@ -144,7 +153,7 @@ int main(int argc, char * argv[]){
                             printf("%d ?\n", Server_room[atoi(ptr)].cur_member);
                             for(int k = 0; k < 100; k++)
                             {
-                                if(Server_room[atoi(ptr)].current_member[k] == 0)
+                                if(Server_room[atoi(ptr)].current_member[k] == 0 && Server_room[atoi(ptr)].is_made != 0)
                                 {
                                     printf("Room Enter to %d %dth %d\n", atoi(ptr), k, i);
                                     Server_room[atoi(ptr)].current_member[k] = i;
@@ -153,6 +162,12 @@ int main(int argc, char * argv[]){
                             }
                             Room_member_info[i].curr_roomNumber = atoi(ptr);
                             printf("%s : %d\n", Room_member_info[i].nickname, atoi(ptr));
+                        }
+                        if(!strcmp(ptr,"EXIT"))
+                        {
+                        
+                            printf("Exiting_room : %d\n", i);
+                            room_exit(Server_room,Room_member_info,i);
                         }
                     }
 
@@ -165,7 +180,7 @@ int main(int argc, char * argv[]){
                             char sending[BUF_SIZE] = "";
                             for(int k = 0; k < 100; k++)
                             {
-                                if(Room_member_info[k].socket_number)
+                                if(Room_member_info[k].socket_number != -1)
                                 {
                                     sprintf(user,"%s (Room %d, %s)\n", Room_member_info[k].nickname, Room_member_info[k].curr_roomNumber, Server_room[Room_member_info[k].curr_roomNumber].roomName);
                                     strcat(sending, user);
@@ -242,7 +257,22 @@ void error_handling(char * buf){
     exit(1);
 }
 
-
+void room_exit(room * servers, socketinfo * infos, int socketid)
+{
+    for(int i = 0; i < 100; i++){
+        if(servers[infos[socketid].curr_roomNumber].current_member[i] == socketid)
+        {
+            servers[infos[socketid].curr_roomNumber].current_member[i] = 0;
+            servers[infos[socketid].curr_roomNumber].cur_member--;
+            if(servers[infos[socketid].curr_roomNumber].cur_member == 0)
+            {
+                servers[infos[socketid].curr_roomNumber].is_made = 0;
+            }
+            break;
+        }
+    }
+    infos[socketid].curr_roomNumber = -1;
+}
 
 void set_nickname(socketinfo * infos, char * nickname, int id)
 {
