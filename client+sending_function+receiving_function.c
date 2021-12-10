@@ -24,6 +24,7 @@ char INFO[9] = "_##_INFO";
     char NAME[13] = "_##_NAME_##";
 /*********************************/
 int intheroom = 0; //현재 내가 방에 있는지 없는지 확인
+int roomnumber = 10; // 최대 방 개수(서버가 제한하는 방 개수에 따라 바뀔 수 있음)
 char myname[BUF_SIZE];
 void error_handling(char* message);
 int chatting(int sock_id);
@@ -148,6 +149,7 @@ int chatting(int sock_id)
                      {
                          sprintf(buf, "%s%s", ROOM, EXIT);
                          write(sock_id, buf, strlen(buf));
+						 intheroom--;
                      }
                      else
                          printf("you can use this command only in the room\n");
