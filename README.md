@@ -1,5 +1,16 @@
 # LinuxWebChatting
 2021-2-SystemEngineering-ChattingApp
+Socket, ncurses, fork를 이용한 Linux based WebChatting Program.
+
+## Server 
+```console
+~$ server <Port>
+```
+
+## Client
+``` console
+~$ client <IP> <Port>
+```
 
 # 회의록
 https://docs.google.com/document/d/17zlNkrKK7ZQpCMKVUkzqMYldj5G3UYX1nzduXloYZfA/edit?usp=sharing
