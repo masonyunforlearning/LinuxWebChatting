@@ -24,6 +24,7 @@ typedef struct type_socketInfo {
     char nickname[30];
 } socketinfo ;
 
+void room_info(room * servers, socketinfo * infos, int socketid);
 void init_room(room* server_rooms, socketinfo * infos, char * room_name, int id);
 void set_nickname(socketinfo * infos, char * nickname, int id);
 void room_exit(room * servers, socketinfo * infos, int socketid);
@@ -97,8 +98,6 @@ int main(int argc, char * argv[]){
                     // sprintf(buf, "Server : Welcome~\nServer : The number of clients is %d now.",counting);
                     // write(clnt_sock, buf, sizeof(buf));
                     strcpy(buf, "");
-                    
-                    strcpy(buf, "");
                     sprintf(buf, "Welcome\n");
                     write(clnt_sock, buf, sizeof(buf));
                 
@@ -169,6 +168,11 @@ int main(int argc, char * argv[]){
                             printf("Exiting_room : %d\n", i);
                             room_exit(Server_room,Room_member_info,i);
                         }
+                        if(!strcmp(ptr,"ROIN"))
+                        {
+                            printf("Sending Room info to %d\n", i);
+                            room_info(Server_room,Room_member_info,i);
+                        }
                     }
 
                     if(!strcmp(ptr, "INFO"))
@@ -232,6 +236,38 @@ int main(int argc, char * argv[]){
                                 }
                             }
                         }
+                        if(!strcmp(ptr, "DMSG"))
+                        {
+                            printf("dmsg provoked\n");
+                            char unfound[] = "Can't find user\n";
+                            char found[BUF_SIZE];
+                            int who_send_to = i;
+                            ptr = strtok(NULL, "_##_");
+                            for(int k = 0; k < 100; k++)
+                            {
+                                if(!strcmp(Room_member_info[k].nickname, ptr) && Room_member_info[k].socket_number != -1)
+                                {
+                                    printf("유저찾음 %d \n", k);
+                                    who_send_to = k;
+                                }
+                            }
+                            if(who_send_to == i)
+                            {
+                                printf("유저못찾음\n");
+                                sprintf(buf2,"%s : 유저못찾음\n",Room_member_info[i].nickname);
+                                write(i, buf2, sizeof(unfound));
+                            }
+                            else
+                            {
+                                
+                                ptr = strtok(NULL, "_##_");
+
+                                strcpy(found, ptr);
+                                printf("유저찾음 : %s\n", found);
+                                sprintf(buf2,"%s : %s\n",Room_member_info[i].nickname, ptr);
+                                write(who_send_to, buf2, BUF_SIZE);
+                            }
+                        }
                     }
 
                         // for(int k = 4; k < 4+count_cli; k++)
@@ -255,6 +291,29 @@ void error_handling(char * buf){
     fputs(buf, stderr);
     fputc('\n', stderr);
     exit(1);
+}
+
+void room_info(room * servers, socketinfo * infos, int socketid)
+{
+    char temp_buf[BUF_SIZE];
+    char temp_buf2[100];
+    char * test;
+    int room_number = infos[socketid].curr_roomNumber;
+    printf("%d's are in %d room\n ", socketid, room_number);
+    sprintf(temp_buf, "************* ROOM INFO *************\n\n\tRoom Number : %d\n\tRoom Name: %s\n\tRoom member:\n",room_number, servers[room_number].roomName);
+    for(int i = 0; i < 100; i++)
+    {
+        if(servers[room_number].current_member[i] != 0)
+        {
+            printf("%d checked : %s\n", i,infos[servers[room_number].current_member[i]].nickname);
+            sprintf(temp_buf2, "\t%d: %s\n", i,infos[servers[room_number].current_member[i]].nickname);
+            printf("%s\n",temp_buf2);
+            test = strcat(temp_buf, temp_buf2);
+        }
+    }
+    printf("Write to %d\n",socketid);
+    printf("%s", temp_buf);
+    write(socketid, test, BUF_SIZE);
 }
 
 void room_exit(room * servers, socketinfo * infos, int socketid)

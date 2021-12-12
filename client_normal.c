@@ -51,7 +51,7 @@ int main(int argc, char * argv[]){
         }
         
         if(pid == 0){
-            str_len = read(sock, message, BUF_SIZE - 1);
+            str_len = read(sock, message, BUF_SIZE);
             message[str_len] = 0;
             printf("%s", message);
         }
