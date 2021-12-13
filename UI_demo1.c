@@ -1,97 +1,105 @@
-#include <ncurses.h>                                                         
-                                                                             
-typedef struct _win_border_struct {                                          
-        chtype  ls, rs, ts, bs,                                              
-                tl, tr, bl, br;                                              
-}WIN_BORDER;                                                                 
-                                                                             
-typedef struct _WIN_struct {                                                 
-                                                                             
-        int startx, starty;                                                  
-        int height, width;                                                   
-        WIN_BORDER border;                                                   
-}WIN;                                                                        
-                                                                             
-void init_win_params(WIN *p_win);                                            
-void print_win_params(WIN *p_win);                                           
-void create_box(WIN *win, int Bool);                                         
-                                                                             
-int main(int argc, char *argv[])                                             
-{       WIN win;                                                             
-        int ch;                                                           
-	char user_nickname[100];	
-                                                                             
-        initscr();                      /* Start curses mode            */   
-        start_color();                  /* Start the color functionality */  
-        cbreak();                       /* Line buffering disabled, Pass on  
-                                         * everty thing to me           */   
-        keypad(stdscr, TRUE);           /* I need that nifty F1         */   
-        noecho();                                                            
-        init_pair(1, COLOR_CYAN, COLOR_BLACK);                               
-        /* Initialize the window parameters */                               
-        init_win_params(&win);                                               
-        print_win_params(&win);                                              
-                                                                             
-        attron(COLOR_PAIR(1));                                               
-        printw("Press F1 to exit");                                          
-        refresh();                                                           
-        attroff(COLOR_PAIR(1));
-	create_box(&win, TRUE);
-	echo();
-	getstr(user_nickname);	
-        endwin();                       /* End curses mode                */ 
-        return 0;                                                            
-}                                                                            
-void init_win_params(WIN *p_win)                                             
-{                                                                            
-        p_win->height = 20;                                                   
-        p_win->width = 60;                                                   
-        p_win->starty = (LINES - p_win->height)/5;                           
-        p_win->startx = (COLS - p_win->width)/5;                             
-                                                                             
-        p_win->border.ls = '|';                                              
-        p_win->border.rs = '|';                                              
-        p_win->border.ts = '-';                                              
-        p_win->border.bs = '-';                                              
-        p_win->border.tl = '+';                                              
-        p_win->border.tr = '+';                                              
-        p_win->border.bl = '+';                                              
-        p_win->border.br = '+';                                              
-                                                                             
-}                                                                            
-void print_win_params(WIN *p_win)                                            
-{                                                                            
-#ifdef _DEBUG                                                                
-        mvprintw(25, 0, "%d %d %d %d", p_win->startx, p_win->starty,         
-                                p_win->width, p_win->height);                
-        refresh();                                                           
-#endif                                                                       
-}              
-void create_box(WIN *p_win, int Bool)
-{       int i, j;
-        int x, y, w, h;
+#include <stdio.h>                          
+#include<locale.h>
+#include <ncursesw/ncurses.h>                                                                                                    
+                                                                                                                        
+#define WIDTH 60                                                                                                        
+#define HEIGHT 20                                                                                                       
+                                                                                                                        
+int startx = 0;                                                                                                         
+int starty = 0;                                                                                                         
+                                                                                                                        
+char *choices[] = {                                                                                                     
+                        "1. 수다 떠실분 들어오세요",                                                                                     
+                        "2. 쪽문에서 치맥하실 분 구함",                                                                                     
+                        "3. 우리 소통해요 채팅방",                                                                                     
+                        "4. 시스템프로그래밍 회의방",                                                                                     
+                        "프로그램 종료",                                                                                         
+                  };                                                                                                    
+int n_choices = sizeof(choices) / sizeof(char *);                                                                       
+void print_menu(WINDOW *menu_win, int highlight);                                                                       
+                                                                                                                        
+int main()                                                                                                              
+{      setlocale(LC_ALL, "ko_KR.utf8");
+	WINDOW *menu_win;                                                                                               
+        int highlight = 1;                                                                                              
+        int choice = 0;                                                                                                 
+        int c;                                                                                                          
+                                                                                                                        
+        initscr();
 
-        x = p_win->startx;
-        y = p_win->starty;
-        w = p_win->width;
-        h = p_win->height;
+	start_color();
 
-        if(Bool == TRUE)
-        {       mvaddch(y, x, p_win->border.tl);
-                mvaddch(y, x + w, p_win->border.tr);
-                mvaddch(y + h, x, p_win->border.bl);
-                mvaddch(y + h, x + w, p_win->border.br);
-                mvhline(y, x + 1, p_win->border.ts, w - 1);
-                mvhline(y + h, x + 1, p_win->border.bs, w - 1);
-                mvvline(y + 1, x, p_win->border.ls, h - 1);
-                mvvline(y + 1, x + w, p_win->border.rs, h - 1);
+	init_pair(1,COLOR_BLACK,COLOR_YELLOW);
 
-        }
-        else
-                for(j = y; j <= y + h; ++j)
-                        for(i = x; i <= x + w; ++i)
-                                mvaddch(j, i, ' ');
+	bkgd(COLOR_PAIR(1));
 
-        refresh();
+        clear();                                                                                                        
+        noecho();                                                                                                       
+        cbreak();       /* Line buffering disabled. pass on everything */                                               
+        startx = (80 - WIDTH) / 2;                                                                                      
+        starty = (24 - HEIGHT) / 2;                                                                                     
+                                                                                                                        
+        menu_win = newwin(HEIGHT, WIDTH, starty, startx);                                                               
+        keypad(menu_win, TRUE);                                                                                         
+        mvprintw(0, 0, "                             < 채팅방 입장>\n방향키를 입력하여 방을 선택할 수 있고, Enter키를 눌러 방에 입장 할 수 있습니다.");                             
+        refresh();                                                                                                      
+        print_menu(menu_win, highlight);                                                                                
+        while(1)                                                                                                        
+        {       c = wgetch(menu_win);                                                                                   
+                switch(c)                                                                                               
+                {       case KEY_UP:                                                                                    
+                                if(highlight == 1)                                                                      
+                                        highlight = n_choices;                                                          
+                                else                                                                                    
+                                        --highlight;                                                                    
+                                break;                                                                                  
+                        case KEY_DOWN:                                                                                  
+                                if(highlight == n_choices)                                                              
+                                        highlight = 1;                                                                  
+                                else                                                                                    
+                                        ++highlight;                                                                    
+                                break;                                                                                  
+                        case 10:                                                                                        
+                                choice = highlight;                                                                     
+                                break;                                                                                  
+                        default:                                                                                        
+                                mvprintw(24, 0, "Charcter pressed is = %3d Hopefully it can be printed as '%c'", c, c); 
+                                refresh();                                                                              
+                                break;                                                                                  
+                }                                                                                                       
+                print_menu(menu_win, highlight);                                                                        
+                if(choice != 0) /* User did a choice come out of the infinite loop */                                   
+                        break;                                                                                          
+        }                                                                                                               
+        mvprintw(23, 0, "You chose choice %d with choice string %s\n", choice, choices[choice - 1]);                    
+        clrtoeol();                                                                                                     
+        refresh();                                                                                                      
+        endwin();                                                                                                       
+        return 0;                                                                                                       
+}                                                                                                                       
+                                                                                                                        
+                                                                                                                        
+void print_menu(WINDOW *menu_win, int highlight)                                                                        
+{                                                                                                                       
+        int x, y, i;                                                                                                    
+                                                                                                                        
+        x = 2;                                                                                                          
+        y = 2;              
 
-}
+	init_pair(2,COLOR_BLACK,COLOR_WHITE);
+	wbkgd(menu_win,COLOR_PAIR(2));	
+        box(menu_win, 0, 0);
+	wborder(menu_win, '|', '|', '-', '-', '+', '+', '+', '+');
+
+        for(i = 0; i < n_choices; ++i)                                                                                  
+        {       if(highlight == i + 1) /* High light the present choice */                                              
+                {       wattron(menu_win, A_REVERSE);                                                                   
+                        mvwprintw(menu_win, y, x, "%s", choices[i]);                                                    
+                        wattroff(menu_win, A_REVERSE);                                                                  
+                }                                                                                                       
+                else                                                                                                    
+                        mvwprintw(menu_win, y, x, "%s", choices[i]);                                                    
+                ++y;                                                                                                    
+        }                                                                                                               
+        wrefresh(menu_win);                                                                                             
+} 
