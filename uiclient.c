@@ -1,3 +1,5 @@
+//전역변수버전
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +12,7 @@
 #include <locale.h>
 #include <pthread.h>
 
-#define WIDTH 60                                                                                                        
+#define WIDTH 75                                                                                                        
 #define HEIGHT 20
 #define BUF_SIZE 10240
 /**********프로토콜 모음************/
@@ -42,34 +44,35 @@ void edit_name();
 int startx = (80 - WIDTH) / 2;
 int starty = (24 - HEIGHT) / 2;
 int chatline = 0;
-
+WINDOW* log_win;
+WINDOW* input_win;
 //
 
-void *p_writing_function(void * sock){
-    printf("writing function success\n");
-    int sock_id = *(int *)sock;
-    printf("Writing socket : %d\n", sock_id);
-    while(1)
+void* p_writing_function(void* sock) {
+    //printf("writing function success\n");
+    int sock_id = *(int*)sock;
+    //printf("Writing socket : %d\n", sock_id);
+    while (1)
     {
-         printw("매뉴얼을 보려면 /help 혹은 /?를 입력하세요.");
-            if (chatting(sock_id) == 1) {
-                return;
-                break;
-            }
-            else
-                error_handling("unknown error");
+        wprintw(log_win, "매뉴얼을 보려면 /help 혹은 /?를 입력하세요.\n");
+        wrefresh(log_win);
+        if (chatting(sock_id) == 1) {
+            return;
+            break;
+        }
+        else
+            error_handling("unknown error");
         refresh();
     }
 }
 
-void *p_reading_function(void * sock){
-    printf("reading function success\n");
-    int sock_id = *(int *)sock;
-    printf("reading socket : %d\n", sock_id);
-    while(1)
+void* p_reading_function(void* sock) {
+    //printf("reading function success\n");
+    int sock_id = *(int*)sock;
+    //printf("reading socket : %d\n", sock_id);
+    while (1)
     {
-         received(sock_id);
-         refresh();
+        received(sock_id);
     }
 }
 
@@ -82,6 +85,8 @@ int main(int argc, char* argv[]) {
     scrollok(stdscr, TRUE);
     init_pair(1, COLOR_BLACK, COLOR_YELLOW);
     bkgd(COLOR_PAIR(1));
+    init_pair(2, COLOR_BLACK, COLOR_WHITE);
+    init_pair(3, COLOR_CYAN, COLOR_WHITE);
 
     int status;
     pthread_t writing;
@@ -113,16 +118,15 @@ int main(int argc, char* argv[]) {
     {
         WINDOW* edit_name_win;
         edit_name_win = newwin(HEIGHT, WIDTH, starty, startx);
-        init_pair(2, COLOR_BLACK, COLOR_WHITE);
         wbkgd(edit_name_win, COLOR_PAIR(2));
         box(edit_name_win, 0, 0);
         wborder(edit_name_win, '|', '|', '-', '-', '+', '+', '+', '+');
         refresh();
-        mvwprintw(edit_name_win, 1, 10, "LinuxWebChatting에 오신 것을 환영합니다.");
-        mvwprintw(edit_name_win, 2, 11, "채팅에서 사용하실 이름을 설정해주세요.");
-        mvwprintw(edit_name_win, 6, 15, "당신의 이름은 무엇인가요?:");
+        mvwprintw(edit_name_win, 2, (WIDTH / 2) - 21, "LinuxWebChatting에 오신 것을 환영합니다.");
+        mvwprintw(edit_name_win, 3, (WIDTH / 2) - 20, "채팅에서 사용하실 이름을 설정해주세요.");
+        mvwprintw(edit_name_win, 9, (WIDTH / 2) - 14, "사용자의 이름을 입력해주세요.");
         echo();
-        mvwgetstr(edit_name_win, 8, 15, myname);
+        mvwgetstr(edit_name_win, 10, (WIDTH / 2), myname);
         token = strtok(myname, "\n");
         sprintf(buf, "%s%s%s%s\n", INFO, NAME, myname, protocol);
         write(sock, buf, strlen(buf));
@@ -132,21 +136,28 @@ int main(int argc, char* argv[]) {
             if (get != 0) break;
         }
         noecho();
-        refresh();
         clear();
         delwin(edit_name_win);
+        refresh();
     }
 
-    printf("Success=====================\n");
+    input_win = newwin(3, WIDTH, HEIGHT, 2);
+    log_win = newwin(HEIGHT - 2, WIDTH, 1, 2);
+    wbkgd(input_win, COLOR_PAIR(2));
+    wbkgd(log_win, COLOR_PAIR(2));
+    scrollok(input_win, TRUE);
+    scrollok(log_win, TRUE);
+
+    //printf("Success=====================\n");
 
     pthread_create(&writing, NULL, p_writing_function, (void*)&sock);
     pthread_create(&reading, NULL, p_reading_function, (void*)&sock);
 
-    printf("Success2====================\n");
+    //printf("Success2====================\n");
 
-    
-    pthread_join(&writing, (void **)&status); //6
-    pthread_join(&reading, (void **)&status);
+
+    pthread_join(writing, (void**)&status); //6
+    pthread_join(reading, (void**)&status);
     close(sock);
 
     return 0;
@@ -160,8 +171,9 @@ int chatting(int sock_id)
     while (1)
     {
         echo();
-        move(30, 0);
-        getstr(message);
+        wgetstr(input_win, message);
+        wclear(input_win);
+        wrefresh(input_win);
 
         if (message[0] == '/')//명령어 파트(dm포함)
         {
@@ -177,7 +189,7 @@ int chatting(int sock_id)
             }
             else if (!strcmp(message + 1, "myname")) //내이름 표시
             {
-                printw("나의 이름 : %s\n", myname);
+                wprintw(log_win, "나의 이름 : %s\n\n", myname);
             }
             else
             {
@@ -189,14 +201,14 @@ int chatting(int sock_id)
                     strcat(buf, token); //DM 대상
                     if (token[0] == '\0')
                     {
-                        printw("/dm 형식에 맞지 않습니다. 다시 시도해주세요 (/dm <대상> <메세지>)\n");
+                        wprintw(log_win, "/dm 형식에 맞지 않습니다. 다시 시도해주세요 (/dm <대상> <메세지>)\n\n");
                     }
                     else
                     {
                         token = strtok(NULL, "\0");
                         if (token == NULL || token[0] == '\0')
                         {
-                            printw("/dm 형식에 맞지 않습니다. 다시 시도해주세요 (/dm <대상> <메세지>)\n");
+                            wprintw(log_win, "/dm 형식에 맞지 않습니다. 다시 시도해주세요 (/dm <대상> <메세지>)\n\n");
                         }
                         else
                         {
@@ -216,7 +228,7 @@ int chatting(int sock_id)
                         intheroom--;
                     }
                     else
-                        printw("이 명령어는 채팅방 안에서만 사용 가능합니다.\n");
+                        wprintw(log_win, "이 명령어는 채팅방 안에서만 사용 가능합니다.\n\n");
 
                 }
                 else if (!strcmp(token, "/info"))
@@ -227,7 +239,7 @@ int chatting(int sock_id)
                         write(sock_id, buf, strlen(buf));
                     }
                     else
-                        printw("이 명령어는 채팅방 안에서만 사용 가능합니다.\n");
+                        wprintw(log_win, "이 명령어는 채팅방 안에서만 사용 가능합니다.\n\n");
 
                 }
                 else if (!strcmp(token, "/mkroom"))
@@ -235,11 +247,11 @@ int chatting(int sock_id)
                     token = strtok(NULL, "\0");
                     if (intheroom)
                     {
-                        printw("/mkroom 형식에 맞지 않습니다. 다시 시도해 주세요 (/mkroom <방이름>)\n");
+                        wprintw(log_win, "/mkroom 형식에 맞지 않습니다. 다시 시도해 주세요 (/mkroom <방이름>)\n\n");
                     }
                     else if (token == NULL || token[0] == '\0')
                     {
-                        printw("/mkroom 형식에 맞지 않습니다. 다시 시도해 주세요 (/mkroom <방이름>)\n");
+                        wprintw(log_win, "/mkroom 형식에 맞지 않습니다. 다시 시도해 주세요 (/mkroom <방이름>)\n\n");
                     }
                     else
                     {
@@ -251,21 +263,21 @@ int chatting(int sock_id)
                 {
                     if (intheroom)
                     {
-                        printw("이 명령어는 로비 안에서만 사용 가능합니다.\n");
+                        wprintw(log_win, "이 명령어는 로비 안에서만 사용 가능합니다.\n\n");
                     }
                     else
                     {
                         token = strtok(NULL, "\0");
                         if (atoi(token) > roomnumber)
                         {
-                            printw("채팅방이 너무 많습니다. 나중에 다시 시도해주세요.\n");
+                            wprintw(log_win, "채팅방이 너무 많습니다. 나중에 다시 시도해주세요.\n\n");
                             continue;
                         }
                         else
                         {
                             if (token == NULL || token[0] == '\0')
                             {
-                                printw("/enter 형식에 맞지 않습니다. 다시 시도해주세요 (/enter <방번호>)\n");
+                                wprintw(log_win, "/enter 형식에 맞지 않습니다. 다시 시도해주세요 (/enter <방번호>)\n\n");
                             }
                             else
                             {
@@ -289,7 +301,7 @@ int chatting(int sock_id)
                     write(sock_id, buf, strlen(buf));
                 }
                 else //그외 잘못된 명령문
-                    printw("유효하지않은 명령어이거나 형식에 맞지 않습니다. 매뉴얼을 보려면 /help 혹은 /?를 입력하세요.\n\n");
+                    wprintw(log_win, "유효하지않은 명령어이거나 형식에 맞지 않습니다. 매뉴얼을 보려면 /help 혹은 /?를 입력하세요.\n\n");
             }
 
         }
@@ -300,17 +312,23 @@ int chatting(int sock_id)
                 if (message[0] != '\0')
                 {
                     token = strtok(message, "\0");
+
+                    wattron(log_win, COLOR_PAIR(3));
+                    wprintw(log_win, "%s\n", token);
+                    wattroff(log_win, COLOR_PAIR(3));
+
                     sprintf(buf, "%s%s%s\n", SEND, token, protocol);
+
                     write(sock_id, buf, strlen(buf));
                 }
             }
             else //아닐경우(로비에 있을경우)
             {
-                printw("채팅은 채팅방 안에서만 가능합니다.\n");
+                wprintw(log_win, "채팅은 채팅방 안에서만 가능합니다.\n\n");
             }
 
         }
-
+        wrefresh(log_win);
     }
     refresh();
     return 5;
@@ -325,7 +343,8 @@ int received(int sock_id)
     str_len = read(sock_id, message, BUF_SIZE - 1);
 
     message[str_len] = 0;
-    printw("%s", message);
+    wprintw(log_win, "%s", message);
+    wrefresh(log_win);
     refresh();
 }
 
@@ -337,14 +356,15 @@ void error_handling(char* message) {
 
 void seecommand() {
 
-    printw("/help /? : 명령어 보기\n");
-    printw("/quit : 프로그램 종료\n");
-    printw("/mlist : 접속자 정보 보기\n");
-    printw("/rlist : 방 목록 보기\n");
-    printw("/myname  : 내 이름 확인하기\n");
-    printw("/mkroom <ROOM_NAME> : 입력한 이름으로 채팅방을 생성\n");
-    printw("/enter <ROOM_NUMBER> : 입력한 번호의 채팅방으로 입장\n");
-    printw("/exit : 채팅방 나가기\n");
-    printw("/info : 현재 채팅방의 정보 보기\n");
-    printw("/dm <Target> <message> : 입력한 대상에게 귓속말을 보냄.\n");
+    wprintw(log_win, "/help /? : 명령어 보기\n");
+    wprintw(log_win, "/quit : 프로그램 종료\n");
+    wprintw(log_win, "/mlist : 접속자 정보 보기\n");
+    wprintw(log_win, "/rlist : 방 목록 보기\n");
+    wprintw(log_win, "/myname  : 내 이름 확인하기\n");
+    wprintw(log_win, "/mkroom <ROOM_NAME> : 입력한 이름으로 채팅방을 생성\n");
+    wprintw(log_win, "/enter <ROOM_NUMBER> : 입력한 번호의 채팅방으로 입장\n");
+    wprintw(log_win, "/exit : 채팅방 나가기\n");
+    wprintw(log_win, "/info : 현재 채팅방의 정보 보기\n");
+    wprintw(log_win, "/dm <Target> <message> : 입력한 대상에게 귓속말을 보냄.\n\n");
 }
+
