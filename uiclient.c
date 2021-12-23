@@ -7,12 +7,13 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <ncursesw/ncurses.h>
-#include<locale.h>
+#include <locale.h>
+#include <pthread.h>
 
 #define WIDTH 60                                                                                                        
 #define HEIGHT 20
 #define BUF_SIZE 10240
-/**********ÇÁ·ÎÅäÄİ ¸ğÀ½************/
+/**********í”„ë¡œí† ì½œ ëª¨ìŒ************/
 char protocol[7] = "_##_";
 char buf[BUF_SIZE] = "";
 char ROOM[9] = "_##_ROOM";
@@ -28,8 +29,8 @@ char MIST[14] = "_##_MIST_##_\n";
 char RIST[14] = "_##_RIST_##_\n";
 char NAME[13] = "_##_NAME_##";
 /*********************************/
-int intheroom = 0; //ÇöÀç ³»°¡ ¹æ¿¡ ÀÖ´ÂÁö ¾ø´ÂÁö È®ÀÎ
-int roomnumber = 10; // ÃÖ´ë ¹æ °³¼ö(¼­¹ö°¡ Á¦ÇÑÇÏ´Â ¹æ °³¼ö¿¡ µû¶ó ¹Ù²ğ ¼ö ÀÖÀ½)
+int intheroom = 0; //í˜„ì¬ ë‚´ê°€ ë°©ì— ìˆëŠ”ì§€ ì—†ëŠ”ì§€ í™•ì¸
+int roomnumber = 10; // ìµœëŒ€ ë°© ê°œìˆ˜(ì„œë²„ê°€ ì œí•œí•˜ëŠ” ë°© ê°œìˆ˜ì— ë”°ë¼ ë°”ë€” ìˆ˜ ìˆìŒ)
 char myname[BUF_SIZE];
 void error_handling(char* message);
 int chatting(int sock_id);
@@ -44,8 +45,36 @@ int chatline = 0;
 
 //
 
+void *p_writing_function(void * sock){
+    printf("writing function success\n");
+    int sock_id = *(int *)sock;
+    printf("Writing socket : %d\n", sock_id);
+    while(1)
+    {
+         printw("ë§¤ë‰´ì–¼ì„ ë³´ë ¤ë©´ /help í˜¹ì€ /?ë¥¼ ì…ë ¥í•˜ì„¸ìš”.");
+            if (chatting(sock_id) == 1) {
+                return;
+                break;
+            }
+            else
+                error_handling("unknown error");
+        refresh();
+    }
+}
+
+void *p_reading_function(void * sock){
+    printf("reading function success\n");
+    int sock_id = *(int *)sock;
+    printf("reading socket : %d\n", sock_id);
+    while(1)
+    {
+         received(sock_id);
+         refresh();
+    }
+}
+
 int main(int argc, char* argv[]) {
-    setlocale(LC_ALL, "ko_KR.utf8");    //ncurses ÇÑ±Û Ãâ·ÂÀ» À§ÇÔ
+    setlocale(LC_ALL, "ko_KR.utf8");    //ncurses í•œê¸€ ì¶œë ¥ì„ ìœ„í•¨
     initscr();
     start_color();
     cbreak();
@@ -53,6 +82,11 @@ int main(int argc, char* argv[]) {
     scrollok(stdscr, TRUE);
     init_pair(1, COLOR_BLACK, COLOR_YELLOW);
     bkgd(COLOR_PAIR(1));
+
+    int status;
+    pthread_t writing;
+    pthread_t reading;
+
 
     int sock;
     struct sockaddr_in serv_addr;
@@ -75,7 +109,7 @@ int main(int argc, char* argv[]) {
 
     if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
         error_handling("connect() error!");
-    else // ÀÌ¸§ ÀÔ·Â
+    else // ì´ë¦„ ì…ë ¥
     {
         WINDOW* edit_name_win;
         edit_name_win = newwin(HEIGHT, WIDTH, starty, startx);
@@ -84,9 +118,9 @@ int main(int argc, char* argv[]) {
         box(edit_name_win, 0, 0);
         wborder(edit_name_win, '|', '|', '-', '-', '+', '+', '+', '+');
         refresh();
-        mvwprintw(edit_name_win, 1, 10, "LinuxWebChatting¿¡ ¿À½Å °ÍÀ» È¯¿µÇÕ´Ï´Ù.");
-        mvwprintw(edit_name_win, 2, 11, "Ã¤ÆÃ¿¡¼­ »ç¿ëÇÏ½Ç ÀÌ¸§À» ¼³Á¤ÇØÁÖ¼¼¿ä.");
-        mvwprintw(edit_name_win, 6, 15, "´ç½ÅÀÇ ÀÌ¸§Àº ¹«¾ùÀÎ°¡¿ä?:");
+        mvwprintw(edit_name_win, 1, 10, "LinuxWebChattingì— ì˜¤ì‹  ê²ƒì„ í™˜ì˜í•©ë‹ˆë‹¤.");
+        mvwprintw(edit_name_win, 2, 11, "ì±„íŒ…ì—ì„œ ì‚¬ìš©í•˜ì‹¤ ì´ë¦„ì„ ì„¤ì •í•´ì£¼ì„¸ìš”.");
+        mvwprintw(edit_name_win, 6, 15, "ë‹¹ì‹ ì˜ ì´ë¦„ì€ ë¬´ì—‡ì¸ê°€ìš”?:");
         echo();
         mvwgetstr(edit_name_win, 8, 15, myname);
         token = strtok(myname, "\n");
@@ -103,30 +137,16 @@ int main(int argc, char* argv[]) {
         delwin(edit_name_win);
     }
 
-    pid_t pid = fork();
+    printf("Success=====================\n");
+
+    pthread_create(&writing, NULL, p_writing_function, (void*)&sock);
+    pthread_create(&reading, NULL, p_reading_function, (void*)&sock);
+
+    printf("Success2====================\n");
+
     
-    if (pid != 0) {
-        endwin();
-    }
-
-    while (1) {
-
-        if (pid != 0)
-        {
-            //¸Ş¼¼Áö ¼­¹ö¿¡ º¸³»±â
-            printw("¸Å´º¾óÀ» º¸·Á¸é /help È¤Àº /?¸¦ ÀÔ·ÂÇÏ¼¼¿ä.");
-            if (chatting(sock) == 1) {
-                kill(pid, SIGINT);
-                break;
-            }
-            else
-                error_handling("unknown error");
-        }
-
-        if (pid == 0)
-            received(sock);
-        refresh();
-    }
+    pthread_join(&writing, (void **)&status); //6
+    pthread_join(&reading, (void **)&status);
     close(sock);
 
     return 0;
@@ -143,21 +163,21 @@ int chatting(int sock_id)
         move(30, 0);
         getstr(message);
 
-        if (message[0] == '/')//¸í·É¾î ÆÄÆ®(dmÆ÷ÇÔ)
+        if (message[0] == '/')//ëª…ë ¹ì–´ íŒŒíŠ¸(dmí¬í•¨)
         {
-            //¾îµğ¼­µç »ç¿ë°¡´É
-            if (!strcmp(message + 1, "help") || !strcmp(message + 1, "?")) //¸í·É¾î ¸ñ·Ï ¹× Å¬¶óÀÌ¾ğÆ®Á¤º¸µî
+            //ì–´ë””ì„œë“  ì‚¬ìš©ê°€ëŠ¥
+            if (!strcmp(message + 1, "help") || !strcmp(message + 1, "?")) //ëª…ë ¹ì–´ ëª©ë¡ ë° í´ë¼ì´ì–¸íŠ¸ì •ë³´ë“±
             {
                 seecommand();
             }
-            else if (!strcmp(message + 1, "quit")) //Å¬¶óÀÌ¾ğÆ® Á¾·á
+            else if (!strcmp(message + 1, "quit")) //í´ë¼ì´ì–¸íŠ¸ ì¢…ë£Œ
             {
                 endwin();
                 return 1;
             }
-            else if (!strcmp(message + 1, "myname")) //³»ÀÌ¸§ Ç¥½Ã
+            else if (!strcmp(message + 1, "myname")) //ë‚´ì´ë¦„ í‘œì‹œ
             {
-                printw("³ªÀÇ ÀÌ¸§ : %s\n", myname);
+                printw("ë‚˜ì˜ ì´ë¦„ : %s\n", myname);
             }
             else
             {
@@ -166,22 +186,22 @@ int chatting(int sock_id)
                 {
                     strcpy(buf, DMSG);
                     token = strtok(NULL, " ");
-                    strcat(buf, token); //DM ´ë»ó
+                    strcat(buf, token); //DM ëŒ€ìƒ
                     if (token[0] == '\0')
                     {
-                        printw("/dm Çü½Ä¿¡ ¸ÂÁö ¾Ê½À´Ï´Ù. ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä (/dm <´ë»ó> <¸Ş¼¼Áö>)\n");
+                        printw("/dm í˜•ì‹ì— ë§ì§€ ì•ŠìŠµë‹ˆë‹¤. ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš” (/dm <ëŒ€ìƒ> <ë©”ì„¸ì§€>)\n");
                     }
                     else
                     {
                         token = strtok(NULL, "\0");
                         if (token == NULL || token[0] == '\0')
                         {
-                            printw("/dm Çü½Ä¿¡ ¸ÂÁö ¾Ê½À´Ï´Ù. ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä (/dm <´ë»ó> <¸Ş¼¼Áö>)\n");
+                            printw("/dm í˜•ì‹ì— ë§ì§€ ì•ŠìŠµë‹ˆë‹¤. ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš” (/dm <ëŒ€ìƒ> <ë©”ì„¸ì§€>)\n");
                         }
                         else
                         {
                             strcat(buf, protocol);
-                            strcat(buf, token);//¸Ş¼¼Áö
+                            strcat(buf, token);//ë©”ì„¸ì§€
                             strcat(buf, "_##_\n");
                             write(sock_id, buf, strlen(buf));
                         }
@@ -196,7 +216,7 @@ int chatting(int sock_id)
                         intheroom--;
                     }
                     else
-                        printw("ÀÌ ¸í·É¾î´Â Ã¤ÆÃ¹æ ¾È¿¡¼­¸¸ »ç¿ë °¡´ÉÇÕ´Ï´Ù.\n");
+                        printw("ì´ ëª…ë ¹ì–´ëŠ” ì±„íŒ…ë°© ì•ˆì—ì„œë§Œ ì‚¬ìš© ê°€ëŠ¥í•©ë‹ˆë‹¤.\n");
 
                 }
                 else if (!strcmp(token, "/info"))
@@ -207,7 +227,7 @@ int chatting(int sock_id)
                         write(sock_id, buf, strlen(buf));
                     }
                     else
-                        printw("ÀÌ ¸í·É¾î´Â Ã¤ÆÃ¹æ ¾È¿¡¼­¸¸ »ç¿ë °¡´ÉÇÕ´Ï´Ù.\n");
+                        printw("ì´ ëª…ë ¹ì–´ëŠ” ì±„íŒ…ë°© ì•ˆì—ì„œë§Œ ì‚¬ìš© ê°€ëŠ¥í•©ë‹ˆë‹¤.\n");
 
                 }
                 else if (!strcmp(token, "/mkroom"))
@@ -215,11 +235,11 @@ int chatting(int sock_id)
                     token = strtok(NULL, "\0");
                     if (intheroom)
                     {
-                        printw("/mkroom Çü½Ä¿¡ ¸ÂÁö ¾Ê½À´Ï´Ù. ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä (/mkroom <¹æÀÌ¸§>)\n");
+                        printw("/mkroom í˜•ì‹ì— ë§ì§€ ì•ŠìŠµë‹ˆë‹¤. ë‹¤ì‹œ ì‹œë„í•´ ì£¼ì„¸ìš” (/mkroom <ë°©ì´ë¦„>)\n");
                     }
                     else if (token == NULL || token[0] == '\0')
                     {
-                        printw("/mkroom Çü½Ä¿¡ ¸ÂÁö ¾Ê½À´Ï´Ù. ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä (/mkroom <¹æÀÌ¸§>)\n");
+                        printw("/mkroom í˜•ì‹ì— ë§ì§€ ì•ŠìŠµë‹ˆë‹¤. ë‹¤ì‹œ ì‹œë„í•´ ì£¼ì„¸ìš” (/mkroom <ë°©ì´ë¦„>)\n");
                     }
                     else
                     {
@@ -231,21 +251,21 @@ int chatting(int sock_id)
                 {
                     if (intheroom)
                     {
-                        printw("ÀÌ ¸í·É¾î´Â ·Îºñ ¾È¿¡¼­¸¸ »ç¿ë °¡´ÉÇÕ´Ï´Ù.\n");
+                        printw("ì´ ëª…ë ¹ì–´ëŠ” ë¡œë¹„ ì•ˆì—ì„œë§Œ ì‚¬ìš© ê°€ëŠ¥í•©ë‹ˆë‹¤.\n");
                     }
                     else
                     {
                         token = strtok(NULL, "\0");
                         if (atoi(token) > roomnumber)
                         {
-                            printw("Ã¤ÆÃ¹æÀÌ ³Ê¹« ¸¹½À´Ï´Ù. ³ªÁß¿¡ ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä.\n");
+                            printw("ì±„íŒ…ë°©ì´ ë„ˆë¬´ ë§ìŠµë‹ˆë‹¤. ë‚˜ì¤‘ì— ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš”.\n");
                             continue;
                         }
                         else
                         {
                             if (token == NULL || token[0] == '\0')
                             {
-                                printw("/enter Çü½Ä¿¡ ¸ÂÁö ¾Ê½À´Ï´Ù. ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä (/enter <¹æ¹øÈ£>)\n");
+                                printw("/enter í˜•ì‹ì— ë§ì§€ ì•ŠìŠµë‹ˆë‹¤. ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš” (/enter <ë°©ë²ˆí˜¸>)\n");
                             }
                             else
                             {
@@ -268,14 +288,14 @@ int chatting(int sock_id)
                     sprintf(buf, "%s%s", INFO, RIST);
                     write(sock_id, buf, strlen(buf));
                 }
-                else //±×¿Ü Àß¸øµÈ ¸í·É¹®
-                    printw("À¯È¿ÇÏÁö¾ÊÀº ¸í·É¾îÀÌ°Å³ª Çü½Ä¿¡ ¸ÂÁö ¾Ê½À´Ï´Ù. ¸Å´º¾óÀ» º¸·Á¸é /help È¤Àº /?¸¦ ÀÔ·ÂÇÏ¼¼¿ä.\n\n");
+                else //ê·¸ì™¸ ì˜ëª»ëœ ëª…ë ¹ë¬¸
+                    printw("ìœ íš¨í•˜ì§€ì•Šì€ ëª…ë ¹ì–´ì´ê±°ë‚˜ í˜•ì‹ì— ë§ì§€ ì•ŠìŠµë‹ˆë‹¤. ë§¤ë‰´ì–¼ì„ ë³´ë ¤ë©´ /help í˜¹ì€ /?ë¥¼ ì…ë ¥í•˜ì„¸ìš”.\n\n");
             }
 
         }
-        else//Ã¤ÆÃÆÄÆ®
+        else//ì±„íŒ…íŒŒíŠ¸
         {
-            if (intheroom)//ÇöÀç ¹æ¿¡ ¼ÓÇØÀÖ´Ù¸é
+            if (intheroom)//í˜„ì¬ ë°©ì— ì†í•´ìˆë‹¤ë©´
             {
                 if (message[0] != '\0')
                 {
@@ -284,9 +304,9 @@ int chatting(int sock_id)
                     write(sock_id, buf, strlen(buf));
                 }
             }
-            else //¾Æ´Ò°æ¿ì(·Îºñ¿¡ ÀÖÀ»°æ¿ì)
+            else //ì•„ë‹ê²½ìš°(ë¡œë¹„ì— ìˆì„ê²½ìš°)
             {
-                printw("Ã¤ÆÃÀº Ã¤ÆÃ¹æ ¾È¿¡¼­¸¸ °¡´ÉÇÕ´Ï´Ù.\n");
+                printw("ì±„íŒ…ì€ ì±„íŒ…ë°© ì•ˆì—ì„œë§Œ ê°€ëŠ¥í•©ë‹ˆë‹¤.\n");
             }
 
         }
@@ -317,14 +337,14 @@ void error_handling(char* message) {
 
 void seecommand() {
 
-    printw("/help /? : ¸í·É¾î º¸±â\n");
-    printw("/quit : ÇÁ·Î±×·¥ Á¾·á\n");
-    printw("/mlist : Á¢¼ÓÀÚ Á¤º¸ º¸±â\n");
-    printw("/rlist : ¹æ ¸ñ·Ï º¸±â\n");
-    printw("/myname  : ³» ÀÌ¸§ È®ÀÎÇÏ±â\n");
-    printw("/mkroom <ROOM_NAME> : ÀÔ·ÂÇÑ ÀÌ¸§À¸·Î Ã¤ÆÃ¹æÀ» »ı¼º\n");
-    printw("/enter <ROOM_NUMBER> : ÀÔ·ÂÇÑ ¹øÈ£ÀÇ Ã¤ÆÃ¹æÀ¸·Î ÀÔÀå\n");
-    printw("/exit : Ã¤ÆÃ¹æ ³ª°¡±â\n");
-    printw("/info : ÇöÀç Ã¤ÆÃ¹æÀÇ Á¤º¸ º¸±â\n");
-    printw("/dm <Target> <message> : ÀÔ·ÂÇÑ ´ë»ó¿¡°Ô ±Ó¼Ó¸»À» º¸³¿.\n");
+    printw("/help /? : ëª…ë ¹ì–´ ë³´ê¸°\n");
+    printw("/quit : í”„ë¡œê·¸ë¨ ì¢…ë£Œ\n");
+    printw("/mlist : ì ‘ì†ì ì •ë³´ ë³´ê¸°\n");
+    printw("/rlist : ë°© ëª©ë¡ ë³´ê¸°\n");
+    printw("/myname  : ë‚´ ì´ë¦„ í™•ì¸í•˜ê¸°\n");
+    printw("/mkroom <ROOM_NAME> : ì…ë ¥í•œ ì´ë¦„ìœ¼ë¡œ ì±„íŒ…ë°©ì„ ìƒì„±\n");
+    printw("/enter <ROOM_NUMBER> : ì…ë ¥í•œ ë²ˆí˜¸ì˜ ì±„íŒ…ë°©ìœ¼ë¡œ ì…ì¥\n");
+    printw("/exit : ì±„íŒ…ë°© ë‚˜ê°€ê¸°\n");
+    printw("/info : í˜„ì¬ ì±„íŒ…ë°©ì˜ ì •ë³´ ë³´ê¸°\n");
+    printw("/dm <Target> <message> : ì…ë ¥í•œ ëŒ€ìƒì—ê²Œ ê·“ì†ë§ì„ ë³´ëƒ„.\n");
 }
