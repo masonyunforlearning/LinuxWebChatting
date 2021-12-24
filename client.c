@@ -44,7 +44,10 @@ int main(int argc, char* argv[]) {
 
         if (pid != 0)
         {
+<<<<<<< HEAD
+=======
             //메세지 서버에 보내기
+>>>>>>> 26ce280d35f10ad85ef6a2c63312831daca6b372
             printf("if you want manual, type  /help or /?\n");
             if (chatting(sock) == 1) {
                 kill(pid, SIGINT);
@@ -54,7 +57,10 @@ int main(int argc, char* argv[]) {
         }
 
         if (pid == 0) {
+<<<<<<< HEAD
+=======
             //메세지 서버에서 받기
+>>>>>>> 26ce280d35f10ad85ef6a2c63312831daca6b372
             str_len = read(sock, message, BUF_SIZE - 1);
             message[str_len] = 0;
             printf("%s", message);
