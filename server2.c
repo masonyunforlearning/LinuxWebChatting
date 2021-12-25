@@ -26,7 +26,7 @@ typedef struct type_socketInfo {
 } socketinfo;
 
 void room_info(room* servers, socketinfo* infos, int socketid);
-void init_room(room* server_rooms, socketinfo* infos, char* room_name, int id, char* password, int max_memeber);
+void init_room(room* server_rooms, socketinfo* infos, char* room_name, int id,char* password, char* max_member);
 void set_nickname(socketinfo* infos, char* nickname, int id);
 void room_exit(room* servers, socketinfo* infos, int socketid);
 void error_handling(char* buf);
