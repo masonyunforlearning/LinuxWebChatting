@@ -8,7 +8,7 @@ Socket, ncurses, fork를 이용한 Linux based WebChatting Program.
 
 ``` sh
 ~$ cc server -o server.c
-~$ cc client -o client.c
+~$ cc client -o client.c -lncursesw -lpthread
 ```
 
 
