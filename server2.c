@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
                     buf[str_len] = 0;
                     char message[BUF_SIZE];
                     strcpy(message, buf);
-
+                    printf("inserted message : %s\n", message);
                     if (str_len == 0) {
                         for (int k = 4; k < 4 + count_cli; k++)
                         {
@@ -142,9 +142,11 @@ int main(int argc, char* argv[]) {
                         ptr = strtok(message, "_##_");
                         if (!strcmp(ptr, "ROOM"))
                         {
+                            printf("ROOM\n");
                             ptr = strtok(NULL, "_##_");
                             if (!strcmp(ptr, "MAKE"))
                             {
+                                printf("MAKE\n");
                                 ptr = strtok(NULL, "_##_");
                                 ptr2 = strtok(NULL, "_##_");
                                 ptr3 = strtok(NULL, "_##_");
@@ -157,8 +159,11 @@ int main(int argc, char* argv[]) {
                             }
                             if (!strcmp(ptr, "ENTE"))
                             {
+                                printf("ENTE\n");
+                                printf("Matched\n");
                                 ptr = strtok(NULL, "_##_");
                                 ptr2 = strtok(NULL, "_##_"); //password
+                                printf("Inserted Password : %s, Original Password : %s \n", ptr2, Server_room[atoi(ptr)].password);
                                 if(!strcmp(ptr2,Server_room[atoi(ptr)].password)) //password correct
                                 {
                                     printf("Entering room %d \n", atoi(ptr));
@@ -177,7 +182,9 @@ int main(int argc, char* argv[]) {
                                     printf("%s : %d\n", Room_member_info[i].nickname, atoi(ptr));
                                 }
                                 else //password fault
-                                    {}
+                                {
+                                    printf("unmatched password\n");
+                                }
                             }
                             if (!strcmp(ptr, "EXIT"))
                             {
@@ -223,7 +230,8 @@ int main(int argc, char* argv[]) {
                                     }
                                     else {
                                         char temp_buf[1024];
-                                        sprintf(temp_buf, "%d room : %s (%d/%d)\n", k, Server_room[k].roomName, Server_room[i].cur_member, Server_room[i].max_member);
+                                        printf("%d room : %s (%d/%d)\n", k, Server_room[k].roomName, Server_room[k].cur_member, Server_room[k].max_member);
+                                        sprintf(temp_buf, "%d room : %s (%d/%d)\n", k, Server_room[k].roomName, Server_room[k].cur_member, Server_room[k].max_member);
                                         strcat(buf, temp_buf);
                                     }
                                 }
@@ -265,14 +273,14 @@ int main(int argc, char* argv[]) {
                                 {
                                     if (!strcmp(Room_member_info[k].nickname, ptr) && Room_member_info[k].socket_number != -1)
                                     {
-                                        printf("����ã�� %d \n", k);
+                                        printf("??????? %d \n", k);
                                         who_send_to = k;
                                     }
                                 }
                                 if (who_send_to == i)
                                 {
-                                    printf("������ã��\n");
-                                    sprintf(buf2, "%s : ������ã��\n", Room_member_info[i].nickname);
+                                    printf("?????????\n");
+                                    sprintf(buf2, "%s : ?????????\n", Room_member_info[i].nickname);
                                     write(i, buf2, sizeof(unfound));
                                 }
                                 else
@@ -281,7 +289,7 @@ int main(int argc, char* argv[]) {
                                     ptr = strtok(NULL, "_##_");
 
                                     strcpy(found, ptr);
-                                    printf("����ã�� : %s\n", found);
+                                    printf("??????? : %s\n", found);
                                     sprintf(buf2, "%s : %s\n", Room_member_info[i].nickname, ptr);
                                     write(who_send_to, buf2, BUF_SIZE);
                                 }
@@ -357,7 +365,7 @@ void set_nickname(socketinfo* infos, char* nickname, int id)
     infos[id].socket_number = id;
 }
 
-void init_room(room* server_rooms, socketinfo* infos, char* room_name, int id,char* password, char* max_member)
+void init_room(room* server_rooms, socketinfo* infos, char* room_name, int id, char* password, char* max_member)
 {
     int max;
     if(max_member == NULL)
@@ -365,6 +373,8 @@ void init_room(room* server_rooms, socketinfo* infos, char* room_name, int id,ch
     else
         max = atoi(max_member);
     
+    printf("Setting max member to %d\n", max);
+
     for (int i = 0; i < 10; i++)
     {
         if (server_rooms[i].is_made == 0)
@@ -376,6 +386,8 @@ void init_room(room* server_rooms, socketinfo* infos, char* room_name, int id,ch
             }
             server_rooms[i].max_member = max;
             strcpy(server_rooms[i].roomName, room_name);
+            strcpy(server_rooms[i].password, password);
+            printf("Final setting : %d's room is %s %s %d\n", i, server_rooms[i].roomName, server_rooms[i].password, server_rooms[i].max_member);
             break;
         }
     }
